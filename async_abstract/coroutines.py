@@ -10,6 +10,8 @@ class ConcurrencyGuardGui:
 
     This class extends the functionality of ConcurrencyGuard by adding progress visualization for tasks
     using `tqdm` for real-time feedback in the terminal or other interfaces.
+
+    I don't think it's completely async but it exists
     """
 
     def __init__(self, semaphore: int) -> None:
