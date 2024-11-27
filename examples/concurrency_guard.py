@@ -1,5 +1,5 @@
 import asyncio
-# Same methods as Concurrency Guard, except there's progress bar
+# Same methods as ConcurrencyGuard, except there's progress bar
 # Why? Because I thought it was cool
 # Check docstrings for more info, lib is relatively simple
 from async_abstract import ConcurrencyGuardGui

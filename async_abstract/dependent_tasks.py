@@ -95,3 +95,31 @@ class DependentTaskRunner:
                     break
             else:
                 raise RuntimeError("Cyclic dependency detected in tasks!")
+    
+    async def run_with_timeout(self, timeout: float) -> AsyncGenerator[Any, None]:
+        executed = set()
+        pending = set(self.tasks.keys())
+
+        async def execute_task(task: DependentTask) -> None:
+            async with self.semaphore:
+                try:
+                    await asyncio.wait_for(asyncio.gather(*(execute_task(self.tasks[dep]) for dep in task.dependencies if dep not in executed)), timeout)
+                    if task.name not in executed:
+                        result = await task.coro()
+                        executed.add(task.name)
+                        return result
+                except TimeoutError:
+                    return
+
+        while pending:
+            for task_name in list(pending):
+                task = self.tasks[task_name]
+                if task.dependencies.issubset(executed):
+                    result = await execute_task(task)
+                    yield result
+                    pending.remove(task_name)
+                    break
+            else:
+                raise RuntimeError("Cyclic dependency detected in tasks!")
+ 
+
