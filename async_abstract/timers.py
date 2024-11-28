@@ -92,18 +92,15 @@ class ResourceTimer:
                     resource not in self.resource_timers or self.resource_timers[resource].is_expired()
                 )
 
-                # If both timers are expired, allow execution
                 if global_expired and resource_expired:
                     break
 
-                # Determine the earliest expiry time
                 wait_time = float("inf")
                 if self.global_timer and not self.global_timer.is_expired():
                     wait_time = min(wait_time, self.global_timer.time_remaining())
                 if resource in self.resource_timers and not self.resource_timers[resource].is_expired():
                     wait_time = min(wait_time, self.resource_timers[resource].time_remaining())
 
-            # Wait for the shortest required time before rechecking
             await asyncio.sleep(wait_time)
 
     async def reset_resource_timer(self, resource: str) -> None:

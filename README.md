@@ -4,7 +4,7 @@ A bunch of utility abstractions for asyncio that I see myself using a lot. Hence
 
 I will not be publishing this to pypi.
 
-## Setup
+## Install
 
 Run this in CLI
 

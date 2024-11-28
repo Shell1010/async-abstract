@@ -77,8 +77,8 @@ class DependentTaskRunner:
         Raises:
             RuntimeError: If there is a cyclic dependency in the tasks.
         """
-        executed: Dict[str, Any] = {}  # Tracks completed tasks and their results
-        pending = set(self.tasks.keys())  # Tracks tasks that still need to be executed
+        executed: Dict[str, Any] = {}  
+        pending = set(self.tasks.keys())
 
         async def execute_task(task: DependentTask) -> Any:
             async with self.semaphore:
@@ -86,20 +86,17 @@ class DependentTaskRunner:
                 result = await task.coro(*dependency_results, *args, **kwargs)
                 return result
 
-        print(f"Initial pending tasks: {pending}")
         while pending:
             for task_name in list(pending):
                 task = self.tasks[task_name]
 
-                # Only execute the task if all its dependencies have been executed
                 if task.dependencies.issubset(executed.keys()):
                     result = await execute_task(task)
-                    executed[task_name] = result  # Mark task as executed
+                    executed[task_name] = result  
                     yield result
                     pending.remove(task_name)
                     break
             else:
-                # If no task can be executed, there is a cyclic dependency
                 raise RuntimeError("Cyclic dependency detected in tasks!")
 
     async def run_with_timeout(self, timeout: float, *args: Any, **kwargs: Any) -> AsyncGenerator[Any, None]:
