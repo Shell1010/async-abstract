@@ -22,7 +22,6 @@ async def chunk_gather(guard: ConcurrencyGuardGui):
     async for i in guard.chunked_gather(coros, 10):
         pass
 
-
 async def main():
     guard = ConcurrencyGuardGui(10)
     await gather(guard)

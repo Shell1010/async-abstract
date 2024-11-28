@@ -3,3 +3,4 @@ __pycache__/
 .env
 build/
 async_abstract.egg-info/
+main.py
