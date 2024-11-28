@@ -29,6 +29,13 @@ class DependentTaskRunner:
     def __init__(self, max_concurrent_tasks: int = 100) -> None:
         self.tasks: Dict[str, DependentTask] = {}
         self.semaphore = asyncio.BoundedSemaphore(max_concurrent_tasks)
+    
+    def add_task(self, name: str, coro: Callable[..., Coroutine[Any, Any, Any]], dependencies: Optional[List[str]] = None) -> DependentTask:
+        dependencies = dependencies or []
+        dep_task = DependentTask(name, coro, set(dependencies))
+        self.tasks[name] = dep_task
+        return dep_task
+
 
     def task(self, name: str, dependencies: Optional[List[str]] = None) -> Callable:
         """
@@ -41,13 +48,12 @@ class DependentTaskRunner:
         Returns:
             Callable: The decorator function.
         """
-        dependencies = dependencies or []
 
         def decorator(coro: Callable[..., Coroutine[Any, Any, Any]]):
             if not asyncio.iscoroutinefunction(coro):
                 raise ValueError(f"Task '{name}' must be a coroutine function.")
 
-            self.tasks[name] = DependentTask(name, coro, set(dependencies))
+            self.add_task(name, coro, dependencies)
 
             @wraps(coro)
             async def wrapper(*args, **kwargs) -> Any:
