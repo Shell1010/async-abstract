@@ -4,14 +4,13 @@ import asyncio
 from tqdm.asyncio import tqdm
 
 
+
 class ConcurrencyGuardGui:
     """
     A GUI-enabled utility class for managing concurrency in asyncio programs using a bounded semaphore.
 
     This class extends the functionality of ConcurrencyGuard by adding progress visualization for tasks
     using `tqdm` for real-time feedback in the terminal or other interfaces.
-
-    I don't think it's completely async but it exists
     """
 
     def __init__(self, semaphore: int) -> None:
@@ -23,7 +22,8 @@ class ConcurrencyGuardGui:
         """
         self.semaphore: asyncio.BoundedSemaphore = asyncio.BoundedSemaphore(semaphore)
 
-    async def gather(self, coros: Sequence[Coroutine[Any, Any, Any]], description: str = "Processing Tasks") -> List[Any]:
+    
+    async def gather(self, coros: Sequence[Coroutine[Any, Any, Any]], blocking: bool = True, description: str = "Processing Tasks") -> List[Any]:
         """
         Gathers results from multiple coroutines with a progress bar, respecting the concurrency limit.
 
@@ -32,13 +32,18 @@ class ConcurrencyGuardGui:
 
         Args:
             coros (Sequence[Coroutine[Any, Any, Any]]): A sequence of coroutines to execute.
+            blocking (bool): If `True`, blocks until all coroutines are completed. If `False`, executes tasks without blocking.
             description (str): A description for the progress bar.
 
         Returns:
             List[Any]: A list of results from all coroutines.
         """
         async with self.semaphore:
-            return await tqdm.gather(*coros, desc=description)
+            if blocking:
+                return await tqdm.gather(*coros, desc=description)
+            else:
+                return await tqdm.gather(*(asyncio.create_task(coro) for coro in coros), desc=description)
+
 
     async def process_tasks(self, coros: Sequence[Coroutine[Any, Any, Any]], description: str = "Processing Tasks") -> AsyncGenerator[Any, None]:
         """
@@ -60,7 +65,7 @@ class ConcurrencyGuardGui:
                     yield await task
                     progress.update(1)
 
-    async def chunked_gather(self, coros: Sequence[Coroutine[Any, Any, Any]], chunks: int, description: str = "Processing Chunks") -> AsyncGenerator[List[Any], None]:
+    async def chunked_gather(self, coros: Sequence[Coroutine[Any, Any, Any]], chunks: int, blocking: bool = True, description: str = "Processing Chunks") -> AsyncGenerator[List[Any], None]:
         """
         Executes coroutines in chunks with a progress bar and gathers results for each chunk.
 
@@ -70,6 +75,7 @@ class ConcurrencyGuardGui:
         Args:
             coros (Sequence[Coroutine[Any, Any, Any]]): A sequence of coroutines to execute.
             chunks (int): The number of coroutines to process per chunk.
+            blocking (bool): If `True`, blocks until each chunk is complete. If `False`, executes without blocking.
             description (str): A description for the progress bar.
 
         Yields:
@@ -80,10 +86,14 @@ class ConcurrencyGuardGui:
             for i in range(0, len(coros), chunks):
                 async with self.semaphore:
                     chunk = coros[i:i + chunks]
-                    yield await asyncio.gather(*chunk)
+                    if blocking:
+                        yield await asyncio.gather(*chunk)
+                    else:
+                        yield await asyncio.gather(*(asyncio.create_task(chu) for chu in chunk))
                     progress.update(1)
 
-    async def cancel_pending_tasks(self, tasks: Iterable[asyncio.Task], description: str = "Cancelling Tasks") -> AsyncGenerator[bool, None]:
+
+    async def cancel_pending_tasks(self, tasks: Sequence[asyncio.Task], description: str = "Cancelling Tasks") -> AsyncGenerator[bool, None]:
         """
         Cancels pending asyncio tasks with a progress bar and yields the result of the cancellation.
 
@@ -121,7 +131,7 @@ class ConcurrencyGuard:
         """
         self.semaphore: asyncio.BoundedSemaphore = asyncio.BoundedSemaphore(semaphore)
 
-    async def gather(self, coros: Sequence[Coroutine[Any, Any, Any]]) -> List[Any]:
+    async def gather(self, coros: Sequence[Coroutine[Any, Any, Any]], blocking: bool = True) -> List[Any]:
         """
         Gathers results from multiple coroutines, respecting the concurrency limit.
 
@@ -133,7 +143,10 @@ class ConcurrencyGuard:
         Returns:
             List[Any]: A list of results from all coroutines.
         """
+
         async with self.semaphore:
+            if not blocking:
+                return await asyncio.gather(*(asyncio.create_task(coro) for coro in coros))
             return await asyncio.gather(*coros)
 
     async def process_tasks(self, coros: Sequence[Coroutine[Any, Any, Any]]) -> AsyncGenerator[Any, None]:
@@ -153,7 +166,7 @@ class ConcurrencyGuard:
             async with self.semaphore:
                 yield await task
 
-    async def chunked_gather(self, coros: Sequence[Coroutine[Any, Any, Any]], chunks: int) -> AsyncGenerator[List[Any], None]:
+    async def chunked_gather(self, coros: Sequence[Coroutine[Any, Any, Any]], chunks: int, blocking: bool = True) -> AsyncGenerator[List[Any], None]:
         """
         Executes coroutines in chunks and gathers results for each chunk.
 
@@ -170,6 +183,10 @@ class ConcurrencyGuard:
         for i in range(0, len(coros), chunks):
             async with self.semaphore:
                 chunk = coros[i:i + chunks]
+
+                if not blocking:
+                    yield await asyncio.gather(*(asyncio.create_task(chu) for chu in chunk))
+                    continue
                 yield await asyncio.gather(*chunk)
 
     async def cancel_pending_tasks(self, tasks: Iterable[asyncio.Task]) -> AsyncGenerator[bool, None]:
