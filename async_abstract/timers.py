@@ -103,11 +103,17 @@ class ResourceTimer:
 
             await asyncio.sleep(wait_time)
 
-    async def current_resource_timer(self, resource: str) -> Optional[Timer]:
-        return self.resource_timers.get(resource)
+    async def current_resource_timer(self, resource: str) -> Optional[float]:
+        timer = self.resource_timers.get(resource)
 
-    async def current_global_timer(self) -> Optional[Timer]:
-        return self.global_timer
+        if timer and not timer.is_expired():
+            return timer.time_remaining()
+
+
+    async def current_global_timer(self) -> Optional[float]:
+        timer = self.global_timer
+        if timer and not timer.is_expired():
+            return timer.time_remaining()
 
     async def reset_resource_timer(self, resource: str) -> None:
         """
