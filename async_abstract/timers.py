@@ -103,6 +103,12 @@ class ResourceTimer:
 
             await asyncio.sleep(wait_time)
 
+    async def current_resource_timer(self, resource: str) -> Optional[Timer]:
+        return self.resource_timers.get(resource)
+
+    async def current_global_timer(self) -> Optional[Timer]:
+        return self.global_timer
+
     async def reset_resource_timer(self, resource: str) -> None:
         """
         Reset the timer for a specific resource.
